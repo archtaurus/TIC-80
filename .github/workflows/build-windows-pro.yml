@@ -26,7 +26,7 @@ jobs:
               shell: cmd
               run: |
                   cd build
-                  cmake -G "Visual Studio 16 2019" -DBUILD_SDLGPU=On -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
+                  cmake -DBUILD_SDLGPU=On -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
                   cmake --build . --config %BUILD_TYPE% --parallel
 
             - name: Deploy
