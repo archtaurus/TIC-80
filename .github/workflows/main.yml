@@ -1,0 +1,36 @@
+name: Build TIC-80 PRO for Windows
+
+on:
+    workflow_dispatch: # 改为手动启动
+
+env:
+    BUILD_TYPE: MinSizeRel
+
+jobs:
+    # === Windows PRO ===
+    windows-pro:
+        runs-on: windows-2025
+
+        steps:
+            - uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+                  fetch-depth: 0
+                  ref: stable # 指定 stable 分支
+
+            - uses: ruby/setup-ruby@v1
+              with:
+                  ruby-version: 2.6
+
+            - name: Build
+              shell: cmd
+              run: |
+                  cd build
+                  cmake -G "Visual Studio 16 2019" -DBUILD_SDLGPU=On -DCMAKE_BUILD_TYPE=%BUILD_TYPE% -DBUILD_PRO=On -DBUILD_WITH_ALL=ON ..
+                  cmake --build . --config %BUILD_TYPE% --parallel
+
+            - name: Deploy
+              uses: actions/upload-artifact@v4
+              with:
+                  name: "tic80-windows-pro"
+                  path: build/bin/tic80.exe
