@@ -29,6 +29,11 @@
 #include <string.h>
 #include <time.h>
 
+#ifdef __SWITCH__
+// from studio/studio.h
+extern void gotoMenu(Studio* studio);
+#endif
+
 #if defined(__TIC_LINUX__)
 #include <signal.h>
 #endif
@@ -57,7 +62,7 @@
 #include <windows.h>
 #endif
 
-#if defined(__TIC_ANDROID__)
+#if defined(__TIC_ANDROID__) || defined(__SWITCH__)
 #include <sys/stat.h>
 #endif
 
@@ -982,11 +987,26 @@ static void processGamepad()
                         || getAxis(controller, SDL_CONTROLLER_AXIS_RIGHTX, +1)
                         || getButton(controller, SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
 
+#ifdef __SWITCH__
+                    // nintendo layout
+                    gamepad->a = getButton(controller, SDL_CONTROLLER_BUTTON_B);
+                    gamepad->b = getButton(controller, SDL_CONTROLLER_BUTTON_A);
+                    gamepad->x = getButton(controller, SDL_CONTROLLER_BUTTON_Y);
+                    gamepad->y = getButton(controller, SDL_CONTROLLER_BUTTON_X);
+
+                    // "+" is a common way to quit homebrew, let's show the menu
+                    if(getButton(controller, SDL_CONTROLLER_BUTTON_START))
+                    {
+                        //studio_exit(platform.studio);
+                        gotoMenu(platform.studio);
+                    }
+#else
+                    // xbox layout
                     gamepad->a = getButton(controller, SDL_CONTROLLER_BUTTON_A);
                     gamepad->b = getButton(controller, SDL_CONTROLLER_BUTTON_B);
                     gamepad->x = getButton(controller, SDL_CONTROLLER_BUTTON_X);
                     gamepad->y = getButton(controller, SDL_CONTROLLER_BUTTON_Y);
-
+#endif
                     // !TODO: We have to find a better way to handle gamepad MENU button
                     // atm we show game menu for only Pause Menu button on XBox one controller
                     // issue #1220
@@ -1202,10 +1222,6 @@ static void pollEvents()
 #if defined(TOUCH_INPUT_SUPPORT)
             platform.keyboard.touch.useText = false;
             handleKeydown(event.key.keysym.sym, true, platform.keyboard.touch.state, NULL);
-
-            if(event.key.keysym.sym != SDLK_AC_BACK)
-                if(!SDL_IsTextInputActive())
-                    SDL_StartTextInput();
 #endif
 
             handleKeydown(event.key.keysym.sym, true, platform.keyboard.state, platform.keyboard.pressed);
@@ -1374,6 +1390,11 @@ static const char* getAppFolder()
         strcat(appFolder, AppFolder);
         mkdir(appFolder, 0777);
 
+#elif defined(__SWITCH__)
+
+        strcpy(appFolder, "/switch/tic80");
+        mkdir(appFolder, 0777);
+
 #else
 
         char* path = SDL_GetPrefPath(TIC_PACKAGE, TIC_NAME);
@@ -1510,7 +1531,7 @@ void tic_sys_preseed()
 static void loadCrtShader()
 {
     static const char VertextShader[] =
-#if !defined (EMSCRIPTEN)
+#if !defined (EMSCRIPTEN) && !defined(__SWITCH__)
         "#version 110"                                                              "\n"
 #endif
         "attribute vec3 gpu_Vertex;"                                                "\n"
@@ -1528,7 +1549,7 @@ static void loadCrtShader()
     ;
 
     static const char PixelShader[] =
-#if !defined (EMSCRIPTEN)
+#if !defined (EMSCRIPTEN) && !defined(__SWITCH__)
         "#version 110"                                                                      "\n"
 #else
         "precision highp float;"                                                            "\n"
@@ -1898,6 +1919,11 @@ static s32 start(s32 argc, char **argv, const char* folder)
 #if defined(__MACOSX__)
     SDL_SetHint(SDL_HINT_RENDER_DRIVER, "opengl");
 #endif
+
+#ifdef __SWITCH__
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
+#endif
+
     int result = SDL_Init(SDL_INIT_VIDEO);
     if (result != 0)
     {
@@ -1950,6 +1976,12 @@ static s32 start(s32 argc, char **argv, const char* folder)
 
                 setWindowIcon();
                 initGPU();
+
+#if defined(__TIC_ANDROID__)
+                // The SDLActivity from SDL v2.32 starts with text input active.
+                // We must explicitly stop it to show our custom keyboard by default.
+                SDL_StopTextInput();
+#endif
 
                 if(studio_config(platform.studio)->options.fullscreen)
                     tic_sys_fullscreen_set(true);

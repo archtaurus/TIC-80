@@ -29,6 +29,7 @@ set(TIC80CORE_SRC
     ${TIC80CORE_DIR}/ext/fft.c
     ${TIC80CORE_DIR}/ext/kiss_fft.c
     ${TIC80CORE_DIR}/ext/kiss_fftr.c
+    ${TIC80CORE_DIR}/ext/png.c
 )
 
 if(BUILD_DEPRECATED)
@@ -50,11 +51,13 @@ target_include_directories(tic80core
     PRIVATE
         ${THIRDPARTY_DIR}/moonscript
         ${THIRDPARTY_DIR}/fennel
+        ${THIRDPARTY_DIR}/yuescript
         ${POCKETPY_DIR}/src
     PUBLIC
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/src)
 
+target_link_libraries(tic80core PRIVATE png)
 target_link_libraries(tic80core PRIVATE blipbuf)
 
 if(BUILD_WITH_ZLIB)
@@ -68,6 +71,10 @@ if(BUILD_STATIC)
 
     if(BUILD_WITH_MOON)
         target_link_libraries(tic80core PRIVATE moon)
+    endif()
+
+    if(BUILD_WITH_YUE)
+        target_link_libraries(tic80core PRIVATE yuescript)
     endif()
 
     if(BUILD_WITH_FENNEL)

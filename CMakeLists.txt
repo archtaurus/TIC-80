@@ -1,17 +1,17 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.10)
 
 include(cmake/version.cmake)
 
 project(TIC-80 VERSION ${VERSION_MAJOR}.${VERSION_MINOR}.${VERSION_REVISION} LANGUAGES C CXX)
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -flto -ffat-lto-objects")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -ffat-lto-objects")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2 -flto -ffat-lto-objects")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -flto -ffat-lto-objects")
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang"  OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
-set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -flto")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto")
+set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O2 -flto")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -flto")
 endif()
 
 if(APPLE)
@@ -24,7 +24,7 @@ message("VERSION_HASH: ${VERSION_HASH}")
 
 configure_file("${PROJECT_SOURCE_DIR}/version.h.in" "${CMAKE_CURRENT_BINARY_DIR}/version.h")
 
-if(ANDROID OR EMSCRIPTEN OR NINTENDO_3DS OR BAREMETALPI)
+if(ANDROID OR EMSCRIPTEN OR NINTENDO_3DS OR NINTENDO_SWITCH OR BAREMETALPI)
     set(BUILD_STATIC_DEFAULT ON)
 else()
     set(BUILD_STATIC_DEFAULT OFF)
@@ -32,7 +32,11 @@ endif()
 
 set(BUILD_PLAYER_DEFAULT OFF)
 set(BUILD_LIBRETRO_DEFAULT OFF)
-set(BUILD_TOUCH_INPUT_DEFAULT ${ANDROID})
+if(ANDROID OR NINTENDO_SWITCH)
+    set(BUILD_TOUCH_INPUT_DEFAULT ON)
+else()
+    set(BUILD_TOUCH_INPUT_DEFAULT OFF)
+endif()
 set(BUILD_WITH_ALL_DEFAULT OFF)
 
 option(BUILD_STATIC "Static runtime" ${BUILD_STATIC_DEFAULT})
@@ -49,6 +53,8 @@ option(BUILD_NO_OPTIMIZATION "Build without optimizations for debugging" OFF)
 option(BUILD_ASAN_DEBUG "Build with AddressSanitizer" OFF)
 option(BUILD_WITH_ZLIB "Build with zlib linked" ON)
 option(TIC80_TARGET "Target binary suffix")
+option(PREFER_SYSTEM_LIBRARIES "Prefer link with system libraries" OFF)
+
 
 if(NOT TIC80_TARGET)
     set(TIC80_TARGET tic80)
@@ -56,6 +62,10 @@ endif()
 
 if(NOT BUILD_SDL)
     set(BUILD_SDLGPU OFF)
+endif()
+
+if(NINTENDO_SWITCH)
+    set(PREFER_SYSTEM_LIBRARIES ON)
 endif()
 
 add_library(runtime INTERFACE)
@@ -69,20 +79,21 @@ endif()
 
 target_compile_definitions(runtime INTERFACE BUILD_DEPRECATED)
 
+message("PREFER_SYSTEM_LIBRARIES: ${PREFER_SYSTEM_LIBRARIES}")
 message("BUILD_STATIC: ${BUILD_STATIC}")
 message("BUILD_SDLGPU: ${BUILD_SDLGPU}")
 message("BUILD_TOUCH_INPUT: ${BUILD_TOUCH_INPUT}")
 message("BUILD_WITH_ALL: ${BUILD_WITH_ALL}")
 
+if(NINTENDO_3DS OR BAREMETALPI)
+    set(BUILD_SDL OFF)
+endif()
+
 if (NINTENDO_3DS)
-    set(BUILD_SDL OFF)
+    set(PREFER_SYSTEM_LIBRARIES ON)
 endif()
 
-if (BAREMETALPI)
-    set(BUILD_SDL OFF)
-endif()
-
-if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN AND NOT ANDROID AND NOT NINTENDO_3DS)
+if(UNIX AND NOT APPLE AND NOT EMSCRIPTEN AND NOT ANDROID)
     set(LINUX TRUE)
 
     if(CMAKE_HOST_SYSTEM_NAME STREQUAL "FreeBSD")
@@ -149,10 +160,12 @@ include(cmake/gif.cmake)
 include(cmake/blipbuf.cmake)
 include(cmake/zlib.cmake)
 include(cmake/zip.cmake)
+include(cmake/png.cmake)
 include(cmake/tools.cmake)
 
 include(cmake/lua.cmake)
 include(cmake/moon.cmake)
+include(cmake/yue.cmake)
 include(cmake/fennel.cmake)
 include(cmake/wren.cmake)
 include(cmake/mruby.cmake)
@@ -167,11 +180,11 @@ include(cmake/core.cmake)
 include(cmake/wave.cmake)
 include(cmake/argparse.cmake)
 include(cmake/naett.cmake)
-include(cmake/png.cmake)
 include(cmake/studio.cmake)
 
 include(cmake/sdl.cmake)
 include(cmake/libretro.cmake)
 include(cmake/n3ds.cmake)
+include(cmake/nswitch.cmake)
 
 include(cmake/install.cmake)

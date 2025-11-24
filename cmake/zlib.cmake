@@ -2,7 +2,17 @@
 # ZLIB
 ################################
 
-if (NOT NINTENDO_3DS)
+if(PREFER_SYSTEM_LIBRARIES)
+    find_package(PkgConfig)
+    pkg_check_modules(zlib IMPORTED_TARGET GLOBAL zlib)
+    if (zlib_FOUND)
+        add_library(zlib ALIAS PkgConfig::zlib)
+        message(STATUS "Use system library: zlib")
+        return()
+    else()
+        message(WARNING "System library zlib not found")
+    endif()
+endif()
 
 set(ZLIB_DIR ${THIRDPARTY_DIR}/zlib)
 set(ZLIB_SRC
@@ -21,11 +31,3 @@ set(ZLIB_SRC
 
 add_library(zlib STATIC ${ZLIB_SRC})
 target_include_directories(zlib INTERFACE ${THIRDPARTY_DIR}/zlib)
-
-else ()
-
-add_library(zlib STATIC IMPORTED)
-set_target_properties( zlib PROPERTIES IMPORTED_LOCATION ${DEVKITPRO}/portlibs/3ds/lib/libz.a )
-target_include_directories(zlib INTERFACE ${DEVKITPRO}/portlibs/3ds/include)
-
-endif ()

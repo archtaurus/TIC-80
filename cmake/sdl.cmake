@@ -1,7 +1,24 @@
 ################################
 # SDL2
 ################################
-if(BUILD_SDL AND NOT EMSCRIPTEN AND NOT RPI)
+if(PREFER_SYSTEM_LIBRARIES)
+    find_package(SDL2)
+    if(SDL2_FOUND)
+        if(NINTENDO_SWITCH)
+            add_library(SDL2 ALIAS SDL2::SDL2-static)
+            add_library(SDL2-static ALIAS SDL2::SDL2-static)
+        else()
+            add_library(SDL2 ALIAS SDL2::SDL2)
+            add_library(SDL2-static ALIAS SDL2::SDL2)
+        endif()
+        message(STATUS "Use system library: SDL2")
+    else()
+        message(WARNING "System library SDL2 not found")
+    endif()
+endif()
+
+
+if(BUILD_SDL AND NOT EMSCRIPTEN AND NOT RPI AND NOT PREFER_SYSTEM_LIBRARIES)
 
     if(WIN32)
         set(HAVE_LIBC TRUE)
@@ -12,7 +29,20 @@ if(BUILD_SDL AND NOT EMSCRIPTEN AND NOT RPI)
         set(SDL_STATIC_PIC ON CACHE BOOL "" FORCE)
     endif()
 
+
     add_subdirectory(${THIRDPARTY_DIR}/sdl2)
+
+    if(MSVC)
+        # CMake policy CMP0079
+        # This allows linking libraries to targets not built in the current directory.
+        cmake_policy(SET CMP0079 NEW)
+
+        target_link_libraries(SDL2 PRIVATE
+            libcmt.lib
+            libvcruntime.lib
+            libucrt.lib
+        )
+    endif()
 
 endif()
 
@@ -64,7 +94,7 @@ set(SDLGPU_SRC
     ${SDLGPU_DIR}/externals/stb_image_write/stb_image_write.c
 )
 
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT NINTENDO_SWITCH)
     list(APPEND SDLGPU_SRC
         ${SDLGPU_DIR}/renderer_GLES_1.c
         ${SDLGPU_DIR}/renderer_GLES_3.c
@@ -80,7 +110,7 @@ endif()
 
 add_library(sdlgpu STATIC ${SDLGPU_SRC})
 
-if(EMSCRIPTEN OR ANDROID)
+if(EMSCRIPTEN OR ANDROID OR NINTENDO_SWITCH)
     target_compile_definitions(sdlgpu PRIVATE GLEW_STATIC SDL_GPU_DISABLE_GLES_1 SDL_GPU_DISABLE_GLES_3 SDL_GPU_DISABLE_OPENGL)
 else()
     target_compile_definitions(sdlgpu PRIVATE GLEW_STATIC SDL_GPU_DISABLE_GLES SDL_GPU_DISABLE_OPENGL_3 SDL_GPU_DISABLE_OPENGL_4)
@@ -114,6 +144,12 @@ if(ANDROID)
         ${ANDROID_GLES2_LIBRARY}
         ${ANDROID_GLES1_LIBRARY}
     )
+endif()
+
+if(NINTENDO_SWITCH)
+    find_package(PkgConfig REQUIRED)
+    pkg_search_module(GLES2 glesv2 REQUIRED IMPORTED_TARGET)
+    target_link_libraries(sdlgpu PkgConfig::GLES2)
 endif()
 
 if(NOT EMSCRIPTEN)
@@ -207,10 +243,11 @@ if(BUILD_SDL)
         install(TARGETS ${TIC80_TARGET} DESTINATION bin)
 
         SET(TIC80_DESKTOP_DIR     "share/applications/")
+        SET(TIC80_MIME_DIR        "share/mime/packages/")
         SET(TIC80_PIXMAPS_DIR     "share/icons/")
 
         install (FILES ${PROJECT_SOURCE_DIR}/build/linux/tic80.desktop DESTINATION ${TIC80_DESKTOP_DIR})
-        install (FILES ${PROJECT_SOURCE_DIR}/build/linux/tic80.xml DESTINATION ${TIC80_DESKTOP_DIR})
+        install (FILES ${PROJECT_SOURCE_DIR}/build/linux/tic80.xml DESTINATION ${TIC80_MIME_DIR})
         install (FILES ${PROJECT_SOURCE_DIR}/build/linux/tic80.png DESTINATION ${TIC80_PIXMAPS_DIR})
 
     endif()
